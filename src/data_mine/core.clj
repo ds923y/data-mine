@@ -10,10 +10,18 @@
   (println "Hello, World!"))
 
 
-(def df (zipmap (map #(keyword (apply str %)) (filter #(= (frequencies %) {"*" 4  "|" 8}) (combo/selections ["*" "|"] 12))) (range)))
+  (def stars-and-bars "map of all the possible combinations of strings with 8 bars and 4 stars to a number"
+    (let [stars-and-bars-keys (map #(keyword (apply str %))
+                                   (filter #(= (frequencies %) {"*" 4  "|" 8})
+                                           (combo/selections ["*" "|"] 12)))] 
+      (zipmap stars-and-bars-keys (range))))
 
 
-(defn find-box [boxes candel-point]
+(defn find-box
+  "finds amoung the positions which position 'box-num' between the bars this star goes.
+  boxes is an array of functions who's truth value determinse presence or absence of a star.
+  candle-point is an open high low close value of a stock candel"
+  [boxes candel-point]
   (loop [box-cond boxes box-num 0]
     (if ((first box-cond) candel-point)
       box-num
@@ -22,8 +30,11 @@
 
 ;(map-indexed (fn [idx itm] ()) boxes)
 
-(defn get-boxes [boxes candel2]
-  (loop [candel-points candel2 box-nums []]
+(defn get-boxes
+  "maps [open high low close] values of candel2 to these values position in a stars and bars representation"
+  [boxes candel2]
+  (mapv #(find-box boxes %) candel2)
+  #_(loop [candel-points candel2 box-nums []]
     (let [pt (seq candel-points)]
       (if-not pt
         box-nums
@@ -33,22 +44,36 @@
 ;(merge (zipmap (range) (repeat 9 0)) (frequencies (get-boxes boxes candel2)))
 
 
-(defn nxt-str [frq i]
+#_(defn nxt-str
+  ""
+  [frq i]
   (let [fmr (get frq i)]
    (if-not fmr
     (if (< i 8) "|" "")
     (str (apply str (repeat fmr "*")) (if (< i 8) "|" "")))))
 
-(defn get-candel-key [boxes candel2]
-  (let [frq (frequencies (get-boxes boxes candel2))] 
-    (loop [i 0 h-code ""]
+(defn output-box-string [[box-num num-stars]]
+  (str (apply str (repeat num-stars "*"))
+       (if (< box-num 8) "|" "")))
+
+(defn get-candel-key
+  "uses the array of functions 'boxes' who's truth value during an iteration of the loop 'i' determines whether"
+  [boxes candel2]
+  (let [frq (frequencies (get-boxes boxes candel2))
+        frq (merge (zipmap (range) (repeat (count boxes) 0)) frq)
+        frq (into (sorted-map-by <) frq)]
+    (apply str (map output-box-string frq))
+    #_(loop [i 0 h-code ""]
       (let [tocat (str h-code (nxt-str frq i))]
         (if (= i 8)
           tocat
           (recur (inc i) tocat))))))
 
 
-  (defn make-boxes [high oc1 oc2 low]
+(defn make-boxes
+  "returns an array of fuctions whos associated used to
+  determine where amoung the stars a bar goes."
+  [high oc1 oc2 low]
     [#(> % high)
      #(= % high)
      #(and (< % high) (> % oc1))
@@ -59,7 +84,9 @@
      #(= % low)
      #(< % low)])
 
-  (defn candelkey [c1 c2]
+(defn candelkey
+  "returns the stars and bars representation of the candel"
+  [c1 c2]
     (get-candel-key (apply make-boxes c1) c2))
 
 
@@ -128,7 +155,7 @@
          (reverse (sort [164.12    165.73	163.37	164.22]))  (reverse (sort [164.00  164.33 160.63 162.32])))))
 
 
-(+ (get df ky) (* 495 (red-black [164.12 165.73 163.37 164.22] [164.00 164.33 160.63 162.32])))
+(+ (get stars-and-bars ky) (* 495 (red-black [164.12 165.73 163.37 164.22] [164.00 164.33 160.63 162.32])))
 
 (* (* 495 4) 5)
 

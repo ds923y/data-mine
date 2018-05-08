@@ -1,8 +1,12 @@
 (ns data-mine.core
   (:require [clojure.math.combinatorics :as combo]
             [clojure.java.io :as io]
+            [clojure.spec.alpha :as s]
             [clojure.data.csv :as csv])
   (:gen-class))
+
+
+
 
 (defn -main
   "I don't do a whole lot ... yet."
@@ -10,18 +14,44 @@
   (println "Hello, World!"))
 
 
-  (def stars-and-bars "map of all the possible combinations of strings with 8 bars and 4 stars to a number"
-    (let [stars-and-bars-keys (map #(keyword (apply str %))
-                                   (filter #(= (frequencies %) {"*" 4  "|" 8})
-                                           (combo/selections ["*" "|"] 12)))] 
-      (zipmap stars-and-bars-keys (range))))
+(defn make-boxes
+  "returns an array of fuctions whos associated used to
+  determine where amoung the stars a bar goes."
+  [high oc1 oc2 low]
+  [#(> % high)
+   #(= % high)
+   #(and (< % high) (> % oc1))
+   #(= oc1 %)
+   #(and (< % oc1) (> % oc2))
+   #(= % oc2)
+   #(and (< % oc2) (> % low))
+   #(= % low)
+   #(< % low)])
 
+(def stars-and-bars "map of all the possible combinations of strings with 8 bars and 4 stars to a number"
+  (let [stars-and-bars-keys (map #(keyword (apply str %))
+                                 (filter #(= (frequencies %) {"*" 4  "|" 8})
+                                         (combo/selections ["*" "|"] 12)))]
+    (zipmap stars-and-bars-keys (range))))
+
+
+
+(s/def ::vnum3 (s/map-of   #(let [frq (frequencies (seq (name %)))]
+                              (and (= (get frq \*) 4) (= (get frq \|) 8)))  number? :count 495 :conform-keys true))
+(s/explain ::vnum3 stars-and-bars)
+
+
+(s/def ::find-box (s/coll-of fn? :count 9))
+(s/def ::find-result number?)
+(s/def ::candel-point number?)
 
 (defn find-box
   "finds amoung the positions which position 'box-num' between the bars this star goes.
   boxes is an array of functions who's truth value determinse presence or absence of a star.
   candle-point is an open high low close value of a stock candel"
   [boxes candel-point]
+  {:pre [ (and (s/valid? ::find-box boxes) (s/valid? ::candel-point candel-point))]
+  :post [(s/valid? ::find-result %)]}
   (loop [box-cond boxes box-num 0]
     (if ((first box-cond) candel-point)
       box-num
@@ -49,24 +79,12 @@
     (apply str (map output-box-string frq))))
 
 
-(defn make-boxes
-  "returns an array of fuctions whos associated used to
-  determine where amoung the stars a bar goes."
-  [high oc1 oc2 low]
-    [#(> % high)
-     #(= % high)
-     #(and (< % high) (> % oc1))
-     #(= oc1 %)
-     #(and (< % oc1) (> % oc2))
-     #(= % oc2)
-     #(and (< % oc2) (> % low))
-     #(= % low)
-     #(< % low)])
+
 
 (defn candelkey
   "returns the stars and bars representation of the candel"
   [c1 c2]
-    (get-candel-key (apply make-boxes c1) c2))
+  (get-candel-key (apply make-boxes c1) c2))
 
 
 (defn red-black [c1 c2]
@@ -91,9 +109,9 @@
       [:green :red] 2
       [:red :red] 3)))
     
-  ;  Date	Open	High	Low	Close*	Adj Close**	Volume
-  ;  Apr 27, 2018	164.00	164.33	160.63	162.32	
-                                        ;  Apr 26, 2018	164.12	165.73	163.37	164.22
+  ;  Date  Open High Low  Close* Adj Close**  Volume
+  ;  Apr 27, 2018  164.00 164.33 160.63 162.32 
+                                        ;  Apr 26, 2018  164.12 165.73 163.37 164.22
 (defprotocol P 
   (bin-bar [this itm]))
 
@@ -120,18 +138,18 @@
 
 (def binner (->BinBars 100 (clojure.lang.PersistentQueue/EMPTY)))
 
-(defn- ticker-data-io []
-  (with-open [reader (io/reader "/Users/drewshaw/Documents/ConduiteDataProcessors/eod-data/AAPL.csv")]
-    (mapv #(Math/abs (- (Double/parseDouble (get % 1)) (Double/parseDouble (get % 4)))) (csv/read-csv reader))) #_(mapv row-cast ))
+;(defn- ticker-data-io []
+;  (with-open [reader (io/reader "/Users/drewshaw/Documents/ConduiteDataProcessors/eod-data/AAPL.csv")]
+;    (mapv #(Math/abs (- (Double/parseDouble (get % 1)) (Double/parseDouble (get % 4)))) (csv/read-csv reader))) #_(mapv row-cast))
 
-(def dtaa (ticker-data-io))
-
-(println (mapv #(.bin-bar binner %) (ticker-data-io)))
+;(def dtaa (ticker-data-io))
+;
+;(println (mapv #(.bin-bar binner %) (ticker-data-io)))
 
 ;(.bin-bar binner 33)
 
 (def ky (keyword (candelkey
-         (reverse (sort [164.12    165.73	163.37	164.22]))  (reverse (sort [164.00  164.33 160.63 162.32])))))
+                  (reverse (sort [164.12    165.73  163.37  164.22]))  (reverse (sort [164.00  164.33 160.63 162.32])))))
 
 
 (+ (get stars-and-bars ky) (* 495 (red-black [164.12 165.73 163.37 164.22] [164.00 164.33 160.63 162.32])))

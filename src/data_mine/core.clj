@@ -33,24 +33,8 @@
 (defn get-boxes
   "maps [open high low close] values of candel2 to these values position in a stars and bars representation"
   [boxes candel2]
-  (mapv #(find-box boxes %) candel2)
-  #_(loop [candel-points candel2 box-nums []]
-    (let [pt (seq candel-points)]
-      (if-not pt
-        box-nums
-        (recur (rest pt) (conj box-nums (find-box boxes (first pt))))))))
+  (mapv #(find-box boxes %) candel2))
 
-
-;(merge (zipmap (range) (repeat 9 0)) (frequencies (get-boxes boxes candel2)))
-
-
-#_(defn nxt-str
-  ""
-  [frq i]
-  (let [fmr (get frq i)]
-   (if-not fmr
-    (if (< i 8) "|" "")
-    (str (apply str (repeat fmr "*")) (if (< i 8) "|" "")))))
 
 (defn output-box-string [[box-num num-stars]]
   (str (apply str (repeat num-stars "*"))
@@ -62,12 +46,7 @@
   (let [frq (frequencies (get-boxes boxes candel2))
         frq (merge (zipmap (range) (repeat (count boxes) 0)) frq)
         frq (into (sorted-map-by <) frq)]
-    (apply str (map output-box-string frq))
-    #_(loop [i 0 h-code ""]
-      (let [tocat (str h-code (nxt-str frq i))]
-        (if (= i 8)
-          tocat
-          (recur (inc i) tocat))))))
+    (apply str (map output-box-string frq))))
 
 
 (defn make-boxes
@@ -159,6 +138,5 @@
 
 (* (* 495 4) 5)
 
-
-
+(println ky)
 (reverse (sort [7 1 2 3 4 5]))

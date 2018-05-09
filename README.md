@@ -19,8 +19,6 @@ $ java -jar data-mine-0.1.0-standalone.jar
 
 ## Options
 
-FIXME: listing of options this app accepts.
-
 ## Examples
 
 ### Bugs
